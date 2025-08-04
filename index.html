@@ -22,6 +22,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // Destructuring React and ReactDOM for use in the script
         const { useState, useCallback } = React;
         const { createRoot } = ReactDOM;
 
@@ -30,6 +31,9 @@
           const [affiliateLink, setAffiliateLink] = useState('');
           const [currentPrice, setCurrentPrice] = useState('');
           const [previousPrice, setPreviousPrice] = useState('');
+          const [isCreditCardDiscount, setIsCreditCardDiscount] = useState(false);
+          const [creditCardName, setCreditCardName] = useState('');
+          const [creditCardDiscountAmount, setCreditCardDiscountAmount] = useState('');
           const [generatedText, setGeneratedText] = useState('');
 
           // Function to handle the generation of the description
@@ -42,6 +46,7 @@
 
             const current = parseFloat(currentPrice);
             const previous = parseFloat(previousPrice);
+            const cardDiscount = isCreditCardDiscount ? parseFloat(creditCardDiscountAmount) : 0;
 
             // More validation for numerical values
             if (isNaN(current) || isNaN(previous) || previous <= current) {
@@ -49,10 +54,26 @@
               return;
             }
 
-            // Calculate the discount percentage
-            const discountPercentage = Math.round(((previous - current) / previous) * 100);
+            if (isCreditCardDiscount && (isNaN(cardDiscount) || cardDiscount < 0)) {
+                setGeneratedText('Please enter a valid credit card discount amount.');
+                return;
+            }
+            
+            // Calculate final price with credit card discount
+            const finalPrice = isCreditCardDiscount && cardDiscount > 0 ? current - cardDiscount : current;
+
+            // Calculate the total discount percentage based on the final price
+            const discountPercentage = Math.round(((previous - finalPrice) / previous) * 100);
 
             let description;
+            let cardDiscountText = '';
+            
+            if (isCreditCardDiscount && cardDiscount > 0) {
+                cardDiscountText = `
+💳 ${creditCardName} Instant Discount
+Price with card: ₹${finalPrice.toFixed(2)} (${cardDiscount.toFixed(2)} off)
+`;
+            }
 
             // Use conditional logic to determine the description based on the discount percentage
             if (discountPercentage > 50) {
@@ -62,7 +83,7 @@ This is one offer you don't want to miss—grab your favorite product at half pr
 🔗 Get yours: ${affiliateLink}
 💰 Current Price: ₹${current.toFixed(2)}
 💸 Previous Price: ₹${previous.toFixed(2)}
-🔥 Massive saving of ${discountPercentage}%! 🔥
+${cardDiscountText}🔥 Massive saving of ${discountPercentage}%! 🔥
 Limited time—go grab the deal now!
 Thanks for following TR Deals ❤️
 `;
@@ -73,7 +94,7 @@ Grab this awesome product now at a big discount!
 🔗 Buy here: ${affiliateLink}
 💰 Current Price: ₹${current.toFixed(2)}
 💸 Previous Price: ₹${previous.toFixed(2)}
-🔥 You save ${discountPercentage}%! 🔥
+${cardDiscountText}🔥 You save ${discountPercentage}%! 🔥
 Stay tuned for more amazing deals every day!
 Thanks for being part of TR Deals!
 `;
@@ -86,7 +107,7 @@ Snag this fantastic product at an unbeatable price!
 🔗 Grab it here: ${affiliateLink}
 💰 Current Price: ₹${current.toFixed(2)}
 💸 Previous Price: ₹${previous.toFixed(2)}
-
+${cardDiscountText}
 🔥 Save ${discountPercentage}% today! 🔥
 
 Don’t miss out — check back daily for fresh, amazing deals!
@@ -100,13 +121,13 @@ Treat yourself today—this product comes with a nice little saving!
 🔗 Shop here: ${affiliateLink}
 💰 Current Price: ₹${current.toFixed(2)}
 💸 Previous Price: ₹${previous.toFixed(2)}
-You save ${discountPercentage}%—every bit counts!
+${cardDiscountText}You save ${discountPercentage}%—every bit counts!
 Stay tuned with TR Deals for more offers every day!
 `;
             }
 
             setGeneratedText(description.trim());
-          }, [affiliateLink, currentPrice, previousPrice]);
+          }, [affiliateLink, currentPrice, previousPrice, isCreditCardDiscount, creditCardName, creditCardDiscountAmount]);
 
           // Function to copy the generated text to the clipboard
           const copyToClipboard = useCallback(() => {
@@ -186,6 +207,53 @@ Stay tuned with TR Deals for more offers every day!
                     </div>
                   </div>
                 </div>
+
+                {/* Credit Card Discount Toggle */}
+                <div className="mt-6 flex items-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            value=""
+                            className="sr-only peer"
+                            checked={isCreditCardDiscount}
+                            onChange={() => setIsCreditCardDiscount(!isCreditCardDiscount)}
+                        />
+                        <div className="w-11 h-6 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-green-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        <span className="ml-3 text-sm font-medium text-gray-300">Credit Card Discount</span>
+                    </label>
+                </div>
+
+                {/* Credit Card Discount Inputs (visible when toggled on) */}
+                {isCreditCardDiscount && (
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="relative">
+                            <label htmlFor="creditCardName" className="block text-sm font-medium text-gray-400 mb-1">
+                                Credit Card Name
+                            </label>
+                            <input
+                                id="creditCardName"
+                                type="text"
+                                value={creditCardName}
+                                onChange={(e) => setCreditCardName(e.target.value)}
+                                placeholder="e.g., HDFC, ICICI"
+                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                        </div>
+                        <div className="relative">
+                            <label htmlFor="creditCardDiscountAmount" className="block text-sm font-medium text-gray-400 mb-1">
+                                Discount Amount (₹)
+                            </label>
+                            <input
+                                id="creditCardDiscountAmount"
+                                type="number"
+                                value={creditCardDiscountAmount}
+                                onChange={(e) => setCreditCardDiscountAmount(e.target.value)}
+                                placeholder="e.g., 50.00"
+                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="mt-8 flex justify-center space-x-4">
